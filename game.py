@@ -1,16 +1,7 @@
 import pygame
 import random
 
-# Инициализация
 pygame.init()
-
-# Константы
-CELL_SIZE = 30
-COLUMNS = 10
-ROWS = 20
-WIDTH = CELL_SIZE * COLUMNS + 150
-HEIGHT = CELL_SIZE * ROWS
-FPS = 60
 
 # Цвета
 BLACK = (0, 0, 0)
@@ -46,6 +37,11 @@ COLORS = {
     'Z': (255, 0, 0),
 }
 
+# Постоянные размеры
+COLUMNS = 10
+ROWS = 20
+PANEL_WIDTH_RATIO = 0.2
+
 
 class Tetromino:
     def __init__(self, shape):
@@ -68,10 +64,10 @@ class Game:
         self.fall_time = 0
         self.fall_speed = 500
         self.game_over = False
-        self.font = pygame.font.SysFont('Arial', 24)
         self.over_alpha = 0
         self.over_font_size = 40
         self.over_anim_time = 0
+        self.font = pygame.font.SysFont('Arial', 24)
 
     def new_tetromino(self):
         return Tetromino(random.choice(list(TETROMINOES.keys())))
@@ -137,7 +133,7 @@ class Game:
             else:
                 self.lock()
 
-    def draw_game_over(self, dt):
+    def draw_game_over(self, dt, width, height):
         self.over_anim_time += dt
         if self.over_alpha < 255:
             self.over_alpha += dt // 2
@@ -147,97 +143,133 @@ class Game:
         font = pygame.font.SysFont("Arial", int(self.over_font_size))
         text = font.render("GAME OVER", True, RED)
         text.set_alpha(min(255, int(self.over_alpha)))
-        rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        rect = text.get_rect(center=(width // 2, height // 2))
         self.screen.blit(text, rect)
 
-    def draw_board(self):
-        # Поле
+    def draw_board(self, width, height):
+        cell_size = min(width * (1 - PANEL_WIDTH_RATIO) // COLUMNS, height // ROWS)
+        panel_width = int(width * PANEL_WIDTH_RATIO)
+        offset_x = 0
+        offset_y = 0
+
         for y in range(ROWS):
             for x in range(COLUMNS):
                 val = self.board[y][x]
                 if val:
                     pygame.draw.rect(self.screen, val,
-                                     (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+                                     (offset_x + x * cell_size, offset_y + y * cell_size, cell_size, cell_size))
                     pygame.draw.rect(self.screen, BLACK,
-                                     (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE), 2)
+                                     (offset_x + x * cell_size, offset_y + y * cell_size, cell_size, cell_size), 2)
 
-        # Текущая фигура
         for y, row in enumerate(self.current.shape):
             for x, cell in enumerate(row):
                 if cell:
-                    px = (self.current.x + x) * CELL_SIZE
-                    py = (self.current.y + y) * CELL_SIZE
-                    pygame.draw.rect(self.screen, self.current.color, (px, py, CELL_SIZE, CELL_SIZE))
-                    pygame.draw.rect(self.screen, BLACK, (px, py, CELL_SIZE, CELL_SIZE), 2)
+                    px = offset_x + (self.current.x + x) * cell_size
+                    py = offset_y + (self.current.y + y) * cell_size
+                    pygame.draw.rect(self.screen, self.current.color, (px, py, cell_size, cell_size))
+                    pygame.draw.rect(self.screen, BLACK, (px, py, cell_size, cell_size), 2)
 
-        # Сетка
+        # Grid
         for x in range(COLUMNS):
             for y in range(ROWS):
                 pygame.draw.rect(self.screen, GRAY,
-                                 (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE), 1)
+                                 (offset_x + x * cell_size, offset_y + y * cell_size, cell_size, cell_size), 1)
 
-        # Панель справа
-        pygame.draw.rect(self.screen, PANEL_BG, (CELL_SIZE * COLUMNS, 0, 150, HEIGHT))
+        # Right panel
+        panel_x = offset_x + COLUMNS * cell_size
+        pygame.draw.rect(self.screen, PANEL_BG, (panel_x, 0, panel_width, height))
 
         score_text = self.font.render(f"Score: {self.score}", True, WHITE)
-        self.screen.blit(score_text, (CELL_SIZE * COLUMNS + 20, 20))
+        self.screen.blit(score_text, (panel_x + 20, 20))
 
-        # Следующая фигура
-        pygame.draw.rect(self.screen, WHITE, (CELL_SIZE * COLUMNS + 10, 65, 130, 110), 2)
+        # Next piece
+        pygame.draw.rect(self.screen, WHITE, (panel_x + 10, 65, panel_width - 20, 110), 2)
         next_label = self.font.render("Next:", True, WHITE)
-        self.screen.blit(next_label, (CELL_SIZE * COLUMNS + 20, 70))
+        self.screen.blit(next_label, (panel_x + 20, 70))
         for y, row in enumerate(self.next.shape):
             for x, cell in enumerate(row):
                 if cell:
-                    px = CELL_SIZE * COLUMNS + 30 + x * CELL_SIZE
-                    py = 100 + y * CELL_SIZE
-                    pygame.draw.rect(self.screen, self.next.color, (px, py, CELL_SIZE, CELL_SIZE))
-                    pygame.draw.rect(self.screen, BLACK, (px, py, CELL_SIZE, CELL_SIZE), 2)
+                    px = panel_x + 30 + x * cell_size
+                    py = 100 + y * cell_size
+                    pygame.draw.rect(self.screen, self.next.color, (px, py, cell_size, cell_size))
+                    pygame.draw.rect(self.screen, BLACK, (px, py, cell_size, cell_size), 2)
 
 
-def run_game(screen):
+def run_game(screen, multiplayer=False):
     pygame.display.set_caption("Tetris")
     clock = pygame.time.Clock()
-    game = Game(screen)
+
+    game1 = Game(screen)
+    game2 = Game(screen) if multiplayer else None
 
     running = True
     while running:
-        dt = clock.tick(FPS)
+        dt = clock.tick(60)
         screen.fill(BLACK)
+
+        width, height = screen.get_size()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+
             elif event.type == pygame.KEYDOWN:
-                if game.game_over:
-                    if event.key == pygame.K_SPACE:
-                        game.restart()
-                    elif event.key == pygame.K_ESCAPE:
-                        return
-                    continue
-                if event.key == pygame.K_LEFT:
-                    game.move(-1)
-                elif event.key == pygame.K_RIGHT:
-                    game.move(1)
-                elif event.key == pygame.K_DOWN:
-                    game.update(100)
-                elif event.key == pygame.K_UP:
-                    game.rotate()
-                elif event.key == pygame.K_SPACE:
-                    game.drop()
-                elif event.key == pygame.K_ESCAPE:
-                    return  # выход в меню
+                # Управление первым игроком
+                if not game1.game_over:
+                    if event.key == pygame.K_LEFT:
+                        game1.move(-1)
+                    elif event.key == pygame.K_RIGHT:
+                        game1.move(1)
+                    elif event.key == pygame.K_DOWN:
+                        game1.update(100)
+                    elif event.key == pygame.K_UP:
+                        game1.rotate()
+                    elif event.key == pygame.K_SPACE:
+                        game1.drop()
 
-        if not game.game_over:
-            game.update(dt)
+                # Управление вторым игроком
+                if multiplayer and game2 and not game2.game_over:
+                    if event.key == pygame.K_a:
+                        game2.move(-1)
+                    elif event.key == pygame.K_d:
+                        game2.move(1)
+                    elif event.key == pygame.K_s:
+                        game2.update(100)
+                    elif event.key == pygame.K_w:
+                        game2.rotate()
+                    elif event.key == pygame.K_LSHIFT:
+                        game2.drop()
 
-        game.draw_board()
-        if game.game_over:
-            game.draw_game_over(dt)
+                # Перезапуск/выход
+                if event.key == pygame.K_ESCAPE:
+                    return
+                if game1.game_over and event.key == pygame.K_r:
+                    game1.restart()
+                if multiplayer and game2 and game2.game_over and event.key == pygame.K_r:
+                    game2.restart()
+
+        # Обновление
+        if not game1.game_over:
+            game1.update(dt)
+        if multiplayer and game2 and not game2.game_over:
+            game2.update(dt)
+
+        # Рисуем
+        half_width = width // 2 if multiplayer else width
+        game1.draw_board(half_width, height)
+        if multiplayer and game2:
+            # Сдвиг отрисовки второго игрока вправо
+            pygame.draw.line(screen, WHITE, (half_width, 0), (half_width, height), 2)
+            offset_surface = pygame.Surface((half_width, height))
+            game2.screen = offset_surface
+            game2.draw_board(half_width, height)
+            screen.blit(offset_surface, (half_width, 0))
+
+        if game1.game_over:
+            game1.draw_game_over(dt, half_width, height)
+        if multiplayer and game2 and game2.game_over:
+            game2.draw_game_over(dt, half_width, height)
 
         pygame.display.flip()
 
     pygame.quit()
-
-
-
