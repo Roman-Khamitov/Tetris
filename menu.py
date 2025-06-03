@@ -8,6 +8,9 @@ GRAY = (30, 30, 30)
 GREEN = (0, 200, 0)
 RED = (200, 0, 0)
 BLACK = (0, 0, 0)
+BLUE = (0, 100, 255)
+PURPLE = (128, 0, 255)
+YELLOW = (255, 200, 0)
 
 # Цвета фигур тетриса
 TETRIS_COLORS = [
@@ -90,14 +93,18 @@ def main_menu(screen):
     button_width = width // 3
     button_height = 60
     button_x = (width - button_width) // 2
-    button1_y = height // 2
-    button2_y = button1_y + 90
-    button3_y = button2_y + 90
+    button_spacing = 80
+    
+    # Положение первой кнопки
+    first_button_y = height // 2 - button_spacing
 
     # Прямоугольники кнопок
-    button1_rect = pygame.Rect(button_x, button1_y, button_width, button_height)
-    button2_rect = pygame.Rect(button_x, button2_y, button_width, button_height)
-    button3_rect = pygame.Rect(button_x, button3_y, button_width, button_height)
+    button1_rect = pygame.Rect(button_x, first_button_y, button_width, button_height)
+    button2_rect = pygame.Rect(button_x, first_button_y + button_spacing, button_width, button_height)
+    button3_rect = pygame.Rect(button_x, first_button_y + button_spacing * 2, button_width, button_height)
+    button4_rect = pygame.Rect(button_x, first_button_y + button_spacing * 3, button_width, button_height)
+    button5_rect = pygame.Rect(button_x, first_button_y + button_spacing * 4, button_width, button_height)
+    button6_rect = pygame.Rect(button_x, first_button_y + button_spacing * 5, button_width, button_height)
 
     frame = 0
 
@@ -115,9 +122,12 @@ def main_menu(screen):
         mouse_pos = pygame.mouse.get_pos()
 
         # Кнопки
-        draw_button(screen, "1. Начать игру",       button1_rect, GREEN, button1_rect.collidepoint(mouse_pos))
-        draw_button(screen, "2. Выйти",             button2_rect, RED,   button2_rect.collidepoint(mouse_pos))
-        draw_button(screen, "3. Для двух игроков",  button3_rect, (0, 100, 255), button3_rect.collidepoint(mouse_pos))
+        draw_button(screen, "1. Начать игру", button1_rect, GREEN, button1_rect.collidepoint(mouse_pos))
+        draw_button(screen, "2. Для двух игроков", button2_rect, BLUE, button2_rect.collidepoint(mouse_pos))
+        draw_button(screen, "3. Рейтинговая игра", button3_rect, PURPLE, button3_rect.collidepoint(mouse_pos))
+        draw_button(screen, "4. Таблица рейтинга", button4_rect, YELLOW, button4_rect.collidepoint(mouse_pos))
+        draw_button(screen, "5. Настройки", button5_rect, (100, 100, 255), button5_rect.collidepoint(mouse_pos))
+        draw_button(screen, "6. Выйти", button6_rect, RED, button6_rect.collidepoint(mouse_pos))
 
         pygame.display.flip()
 
@@ -130,23 +140,41 @@ def main_menu(screen):
                 if event.key == pygame.K_1:
                     from game import run_game
                     run_game(screen)
-                elif event.key == pygame.K_2 or event.key == pygame.K_ESCAPE:
-                    pygame.quit()
-                    sys.exit()
-                elif event.key == pygame.K_3:
+                elif event.key == pygame.K_2:
                     from game import run_game
                     run_game(screen, multiplayer=True)
+                elif event.key == pygame.K_3:
+                    # Здесь будет вызов функции для рейтинговой игры
+                    print("Рейтинговая игра")
+                elif event.key == pygame.K_4:
+                    # Здесь будет вызов функции для таблицы рейтинга
+                    print("Таблица рейтинга")
+                elif event.key == pygame.K_5:
+                    # Здесь будет вызов функции для настроек
+                    print("Настройки")
+                elif event.key == pygame.K_6 or event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if button1_rect.collidepoint(event.pos):
                     from game import run_game
                     run_game(screen)
                 elif button2_rect.collidepoint(event.pos):
-                    pygame.quit()
-                    sys.exit()
-                elif button3_rect.collidepoint(event.pos):
                     from game import run_game
                     run_game(screen, multiplayer=True)
+                elif button3_rect.collidepoint(event.pos):
+                    # Здесь будет вызов функции для рейтинговой игры
+                    print("Рейтинговая игра")
+                elif button4_rect.collidepoint(event.pos):
+                    # Здесь будет вызов функции для таблицы рейтинга
+                    print("Таблица рейтинга")
+                elif button5_rect.collidepoint(event.pos):
+                    # Здесь будет вызов функции для настроек
+                    print("Настройки")
+                elif button6_rect.collidepoint(event.pos):
+                    pygame.quit()
+                    sys.exit()
 
         frame += 1
         clock.tick(60)

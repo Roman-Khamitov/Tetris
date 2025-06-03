@@ -40,7 +40,7 @@ COLORS = {
 # Постоянные размеры
 COLUMNS = 10
 ROWS = 20
-PANEL_WIDTH_RATIO = 0.2
+PANEL_WIDTH_RATIO = 0.25  # Увеличим панель для лучшего отображения
 
 
 class Tetromino:
@@ -143,8 +143,14 @@ class Game:
         font = pygame.font.SysFont("Arial", int(self.over_font_size))
         text = font.render("GAME OVER", True, RED)
         text.set_alpha(min(255, int(self.over_alpha)))
-        rect = text.get_rect(center=(width // 2, height // 2))
+        rect = text.get_rect(center=(width // 2, height // 2 - 30))
         self.screen.blit(text, rect)
+        
+        small_font = pygame.font.SysFont("Arial", 24)
+        hint_text = small_font.render("Press R to Restart", True, WHITE)
+        hint_text.set_alpha(min(255, int(self.over_alpha)))
+        hint_rect = hint_text.get_rect(center=(width // 2, height // 2 + 30))
+        self.screen.blit(hint_text, hint_rect)
 
     def draw_board(self, width, height):
         cell_size = min(width * (1 - PANEL_WIDTH_RATIO) // COLUMNS, height // ROWS)
@@ -152,6 +158,7 @@ class Game:
         offset_x = 0
         offset_y = 0
 
+        # Игровое поле
         for y in range(ROWS):
             for x in range(COLUMNS):
                 val = self.board[y][x]
@@ -161,6 +168,7 @@ class Game:
                     pygame.draw.rect(self.screen, BLACK,
                                      (offset_x + x * cell_size, offset_y + y * cell_size, cell_size, cell_size), 2)
 
+        # Текущая фигура
         for y, row in enumerate(self.current.shape):
             for x, cell in enumerate(row):
                 if cell:
@@ -169,30 +177,54 @@ class Game:
                     pygame.draw.rect(self.screen, self.current.color, (px, py, cell_size, cell_size))
                     pygame.draw.rect(self.screen, BLACK, (px, py, cell_size, cell_size), 2)
 
-        # Grid
+        # Сетка
         for x in range(COLUMNS):
             for y in range(ROWS):
                 pygame.draw.rect(self.screen, GRAY,
                                  (offset_x + x * cell_size, offset_y + y * cell_size, cell_size, cell_size), 1)
 
-        # Right panel
+        # Боковая панель
         panel_x = offset_x + COLUMNS * cell_size
         pygame.draw.rect(self.screen, PANEL_BG, (panel_x, 0, panel_width, height))
 
+        # Очки
         score_text = self.font.render(f"Score: {self.score}", True, WHITE)
         self.screen.blit(score_text, (panel_x + 20, 20))
 
-        # Next piece
-        pygame.draw.rect(self.screen, WHITE, (panel_x + 10, 65, panel_width - 20, 110), 2)
+        # Следующая фигура
+        next_panel_height = 150  # Увеличим высоту панели для следующей фигуры
+        pygame.draw.rect(self.screen, WHITE, (panel_x + 10, 60, panel_width - 20, next_panel_height), 2)
         next_label = self.font.render("Next:", True, WHITE)
-        self.screen.blit(next_label, (panel_x + 20, 70))
+        self.screen.blit(next_label, (panel_x + 20, 65))
+        
+        # Центрируем следующую фигуру
+        next_shape_width = len(self.next.shape[0]) * cell_size
+        next_shape_height = len(self.next.shape) * cell_size
+        start_x = panel_x + (panel_width - next_shape_width) // 2
+        start_y = 100 + (next_panel_height - next_shape_height - 40) // 2
+        
         for y, row in enumerate(self.next.shape):
             for x, cell in enumerate(row):
                 if cell:
-                    px = panel_x + 30 + x * cell_size
-                    py = 100 + y * cell_size
+                    px = start_x + x * cell_size
+                    py = start_y + y * cell_size
                     pygame.draw.rect(self.screen, self.next.color, (px, py, cell_size, cell_size))
                     pygame.draw.rect(self.screen, BLACK, (px, py, cell_size, cell_size), 2)
+
+        # Управление (перенесем под следующую фигуру)
+        controls_y = 60 + next_panel_height + 20
+        controls_height = 100
+        pygame.draw.rect(self.screen, WHITE, (panel_x + 10, controls_y, panel_width - 20, controls_height), 2)
+        
+        control_title = self.font.render("Controls:", True, WHITE)
+        self.screen.blit(control_title, (panel_x + 20, controls_y + 5))
+        
+        # Разделим управление на две строки
+        control_line1 = self.font.render("Move: Arrow Keys", True, RED)
+        control_line2 = self.font.render("Rotate: Up, Drop: Space", True, RED)
+        
+        self.screen.blit(control_line1, (panel_x + 20, controls_y + 35))
+        self.screen.blit(control_line2, (panel_x + 20, controls_y + 65))
 
 
 def run_game(screen, multiplayer=False):
@@ -203,10 +235,15 @@ def run_game(screen, multiplayer=False):
     game2 = Game(screen) if multiplayer else None
 
     running = True
+    winner_declared = False
+    winner_text = ""
+    winner_alpha = 0
+    winner_font_size = 40
+    winner_anim_time = 0
+
     while running:
         dt = clock.tick(60)
         screen.fill(BLACK)
-
         width, height = screen.get_size()
 
         for event in pygame.event.get():
@@ -245,8 +282,13 @@ def run_game(screen, multiplayer=False):
                     return
                 if game1.game_over and event.key == pygame.K_r:
                     game1.restart()
+                    if multiplayer:
+                        game2.restart()
+                        winner_declared = False
                 if multiplayer and game2 and game2.game_over and event.key == pygame.K_r:
+                    game1.restart()
                     game2.restart()
+                    winner_declared = False
 
         # Обновление
         if not game1.game_over:
@@ -254,22 +296,69 @@ def run_game(screen, multiplayer=False):
         if multiplayer and game2 and not game2.game_over:
             game2.update(dt)
 
-        # Рисуем
-        half_width = width // 2 if multiplayer else width
-        game1.draw_board(half_width, height)
-        if multiplayer and game2:
-            # Сдвиг отрисовки второго игрока вправо
-            pygame.draw.line(screen, WHITE, (half_width, 0), (half_width, height), 2)
-            offset_surface = pygame.Surface((half_width, height))
-            game2.screen = offset_surface
-            game2.draw_board(half_width, height)
-            screen.blit(offset_surface, (half_width, 0))
+        if not multiplayer:
+            game1.draw_board(width, height)
+            if game1.game_over:
+                game1.draw_game_over(dt, width, height)
 
-        if game1.game_over:
-            game1.draw_game_over(dt, half_width, height)
-        if multiplayer and game2 and game2.game_over:
-            game2.draw_game_over(dt, half_width, height)
+        else:
+            half_width = width // 2
+
+            # Игрок 1
+            surface1 = pygame.Surface((half_width, height))
+            game1.screen = surface1
+            game1.draw_board(half_width, height)
+            draw_label(surface1, "PLAYER 1", 24, WHITE, half_width // 2, 10)
+            
+            # Игрок 2
+            surface2 = pygame.Surface((half_width, height))
+            game2.screen = surface2
+            game2.draw_board(half_width, height)
+            draw_label(surface2, "PLAYER 2", 24, WHITE, half_width // 2, 10)
+
+            screen.blit(surface1, (0, 0))
+            screen.blit(surface2, (half_width, 0))
+
+            pygame.draw.line(screen, WHITE, (half_width, 0), (half_width, height), 2)
+
+            # Победа одного игрока
+            if not winner_declared:
+                if game1.game_over and not game2.game_over:
+                    winner_text = f"Player 2 WINS! Score: {game2.score}"
+                    winner_declared = True
+                elif game2.game_over and not game1.game_over:
+                    winner_text = f"Player 1 WINS! Score: {game1.score}"
+                    winner_declared = True
+                elif game1.game_over and game2.game_over:
+                    winner_text = f"Draw!"
+                    winner_declared = True
+
+            if winner_declared:
+                winner_anim_time += dt
+                if winner_alpha < 255:
+                    winner_alpha += dt // 2
+                if winner_font_size < 80:
+                    winner_font_size += dt * 0.05
+
+                font = pygame.font.SysFont("Arial", int(winner_font_size))
+                text = font.render(winner_text, True, RED)
+                text.set_alpha(min(255, int(winner_alpha)))
+                rect = text.get_rect(center=(width // 2, height // 2 - 30))
+                screen.blit(text, rect)
+                
+                small_font = pygame.font.SysFont("Arial", 24)
+                hint = small_font.render("Press R to Restart", True, WHITE)
+                hint.set_alpha(min(255, int(winner_alpha)))
+                hint_rect = hint.get_rect(center=(width // 2, height // 2 + 30))
+                screen.blit(hint, hint_rect)
 
         pygame.display.flip()
 
     pygame.quit()
+
+
+def draw_label(surface, text, size, color, x, y):
+    font = pygame.font.SysFont("Arial", size)
+    label = font.render(text, True, color)
+    rect = label.get_rect(center=(x, y + label.get_height() // 2))
+    surface.blit(label, rect)
