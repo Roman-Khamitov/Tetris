@@ -152,7 +152,7 @@ class Game:
         hint_rect = hint_text.get_rect(center=(width // 2, height // 2 + 30))
         self.screen.blit(hint_text, hint_rect)
 
-    def draw_board(self, width, height):
+    def draw_board(self, width, height, player_num=None):
         cell_size = min(width * (1 - PANEL_WIDTH_RATIO) // COLUMNS, height // ROWS)
         panel_width = int(width * PANEL_WIDTH_RATIO)
         offset_x = 0
@@ -215,14 +215,21 @@ class Game:
         controls_y = 60 + next_panel_height + 20
         controls_height = 100
         pygame.draw.rect(self.screen, WHITE, (panel_x + 10, controls_y, panel_width - 20, controls_height), 2)
-        
+
         control_title = self.font.render("Controls:", True, WHITE)
         self.screen.blit(control_title, (panel_x + 20, controls_y + 5))
-        
-        # Разделим управление на две строки
-        control_line1 = self.font.render("Move: Arrow Keys", True, RED)
-        control_line2 = self.font.render("Rotate: Up, Drop: Space", True, RED)
-        
+
+        if player_num == 1:
+            control_line1 = self.font.render("Move: A / D", True, RED)
+            control_line2 = self.font.render("Rotate: W   Drop: Shift", True, RED)
+        elif player_num == 2:
+            control_line1 = self.font.render("Move: ← / →", True, RED)
+            control_line2 = self.font.render("Rotate: ↑   Drop: Space", True, RED)
+        else:
+            # Single-player default (assume WASD)
+            control_line1 = self.font.render("Move: A / D", True, RED)
+            control_line2 = self.font.render("Rotate: W   Drop: Shift", True, RED)
+
         self.screen.blit(control_line1, (panel_x + 20, controls_y + 35))
         self.screen.blit(control_line2, (panel_x + 20, controls_y + 65))
 
@@ -251,77 +258,78 @@ def run_game(screen, multiplayer=False):
                 running = False
 
             elif event.type == pygame.KEYDOWN:
-                # Управление первым игроком
-                if not game1.game_over:
-                    if event.key == pygame.K_LEFT:
+                # Управление первым игроком (WASD + LShift)
+                if not game1.game_over and not winner_declared:
+                    if event.key == pygame.K_a:
                         game1.move(-1)
-                    elif event.key == pygame.K_RIGHT:
+                    elif event.key == pygame.K_d:
                         game1.move(1)
-                    elif event.key == pygame.K_DOWN:
+                    elif event.key == pygame.K_s:
                         game1.update(100)
-                    elif event.key == pygame.K_UP:
+                    elif event.key == pygame.K_w:
                         game1.rotate()
-                    elif event.key == pygame.K_SPACE:
+                    elif event.key == pygame.K_LSHIFT:
                         game1.drop()
 
-                # Управление вторым игроком
-                if multiplayer and game2 and not game2.game_over:
-                    if event.key == pygame.K_a:
+                # Управление вторым игроком (Arrow keys + Space)
+                if multiplayer and game2 and not game2.game_over and not winner_declared:
+                    if event.key == pygame.K_LEFT:
                         game2.move(-1)
-                    elif event.key == pygame.K_d:
+                    elif event.key == pygame.K_RIGHT:
                         game2.move(1)
-                    elif event.key == pygame.K_s:
+                    elif event.key == pygame.K_DOWN:
                         game2.update(100)
-                    elif event.key == pygame.K_w:
+                    elif event.key == pygame.K_UP:
                         game2.rotate()
-                    elif event.key == pygame.K_LSHIFT:
+                    elif event.key == pygame.K_SPACE:
                         game2.drop()
 
                 # Перезапуск/выход
                 if event.key == pygame.K_ESCAPE:
                     return
-                if game1.game_over and event.key == pygame.K_r:
+                if (game1.game_over or (multiplayer and game2 and game2.game_over)) and event.key == pygame.K_r:
                     game1.restart()
                     if multiplayer:
                         game2.restart()
-                        winner_declared = False
-                if multiplayer and game2 and game2.game_over and event.key == pygame.K_r:
-                    game1.restart()
-                    game2.restart()
                     winner_declared = False
+                    winner_alpha = 0
+                    winner_font_size = 40
 
-        # Обновление
-        if not game1.game_over:
-            game1.update(dt)
-        if multiplayer and game2 and not game2.game_over:
-            game2.update(dt)
-
+        # Обновление (только если игра не закончена)
         if not multiplayer:
-            game1.draw_board(width, height)
+            if not game1.game_over:
+                game1.update(dt)
+            game1.draw_board(width, height, player_num=1)
             if game1.game_over:
                 game1.draw_game_over(dt, width, height)
-
         else:
             half_width = width // 2
 
-            # Игрок 1
+            # Игрок 1 (WASD)
             surface1 = pygame.Surface((half_width, height))
             game1.screen = surface1
             game1.draw_board(half_width, height)
-            draw_label(surface1, "PLAYER 1", 24, WHITE, half_width // 2, 10)
+    
             
-            # Игрок 2
+            # Игрок 2 (Arrows)
             surface2 = pygame.Surface((half_width, height))
             game2.screen = surface2
-            game2.draw_board(half_width, height)
-            draw_label(surface2, "PLAYER 2", 24, WHITE, half_width // 2, 10)
+            game2.draw_board(half_width, height, player_num=2)
+
 
             screen.blit(surface1, (0, 0))
             screen.blit(surface2, (half_width, 0))
 
             pygame.draw.line(screen, WHITE, (half_width, 0), (half_width, height), 2)
 
-            # Победа одного игрока
+            # Обновление игр только если нет победителя
+            if not winner_declared:
+                if not game1.game_over:
+                    game1.update(dt)
+                if not game2.game_over:
+                    game2.update(dt)
+
+            # Проверка на окончание игры
             if not winner_declared:
                 if game1.game_over and not game2.game_over:
                     winner_text = f"Player 2 WINS! Score: {game2.score}"
@@ -330,15 +338,26 @@ def run_game(screen, multiplayer=False):
                     winner_text = f"Player 1 WINS! Score: {game1.score}"
                     winner_declared = True
                 elif game1.game_over and game2.game_over:
-                    winner_text = f"Draw!"
+                    if game1.score > game2.score:
+                        winner_text = f"Player 1 WINS! {game1.score}-{game2.score}"
+                    elif game2.score > game1.score:
+                        winner_text = f"Player 2 WINS! {game2.score}-{game1.score}"
+                    else:
+                        winner_text = f"DRAW! Score: {game1.score}"
                     winner_declared = True
 
+            # Отображение сообщения о победе
             if winner_declared:
                 winner_anim_time += dt
                 if winner_alpha < 255:
                     winner_alpha += dt // 2
                 if winner_font_size < 80:
                     winner_font_size += dt * 0.05
+
+                # Затемнение экрана
+                overlay = pygame.Surface((width, height), pygame.SRCALPHA)
+                overlay.fill((0, 0, 0, 180))
+                screen.blit(overlay, (0, 0))
 
                 font = pygame.font.SysFont("Arial", int(winner_font_size))
                 text = font.render(winner_text, True, RED)
