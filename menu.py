@@ -84,6 +84,9 @@ def draw_tetris_logo(screen, start_x, start_y, block_size, pulse_scale=1.0):
         x += (len(pattern[0]) + 1) * block_size * pulse_scale
 
 def main_menu(screen):
+    pygame.mixer.music.load("assets/MenuTheme.mp3")
+    pygame.mixer.music.set_volume(0.5)  # громкость от 0.0 до 1.0
+    pygame.mixer.music.play(-1)  # -1 = бесконечное повторение
     clock = pygame.time.Clock()
     width, height = screen.get_size()
 
