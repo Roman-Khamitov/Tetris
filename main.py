@@ -3,7 +3,7 @@ from menu import main_menu
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((1500, 900))
+    screen = pygame.display.set_mode((1920, 1080))
     pygame.display.set_caption("Multiplayer Tetris")
     main_menu(screen)
     pygame.mixer.music.stop()

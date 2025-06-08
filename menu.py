@@ -32,7 +32,7 @@ TETRIS_LETTERS = {
           "  #  "],
     'E': ["#####",
           "#    ",
-          "###  ",
+          " ### ",
           "#    ",
           "#####"],
     'R': ["#### ",
@@ -82,14 +82,14 @@ def draw_tetris_logo(screen, start_x, start_y, block_size, pulse_scale=1.0):
                         block_size * pulse_scale
                     )
                     pygame.draw.rect(screen, color, rect)
-                    pygame.draw.rect(screen, BLACK, rect, 2)  # обводка
+                    pygame.draw.rect(screen, BLACK, rect, 2)
 
         x += (len(pattern[0]) + 1) * block_size * pulse_scale
 
 def main_menu(screen):
     pygame.mixer.music.load("assets/MenuTheme.mp3")
-    pygame.mixer.music.set_volume(0.5)  # громкость от 0.0 до 1.0
-    pygame.mixer.music.play(-1)  # -1 = бесконечное повторение
+    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.play(-1)
     clock = pygame.time.Clock()
     width, height = screen.get_size()
 
@@ -98,10 +98,8 @@ def main_menu(screen):
     button_x = (width - button_width) // 2
     button_spacing = 80
     
-    # Положение первой кнопки
     first_button_y = height // 2 - button_spacing
 
-    # Прямоугольники кнопок
     button1_rect = pygame.Rect(button_x, first_button_y, button_width, button_height)
     button2_rect = pygame.Rect(button_x, first_button_y + button_spacing, button_width, button_height)
     button3_rect = pygame.Rect(button_x, first_button_y + button_spacing * 2, button_width, button_height)
@@ -114,7 +112,6 @@ def main_menu(screen):
     while True:
         screen.fill(GRAY)
 
-        # Пульсация логотипа
         pulse = 1.0 + 0.05 * math.sin(frame * 0.1)
         block_size = min(width, height) // 25
         logo_x = (width - block_size * 6 * 6) // 2
@@ -124,7 +121,6 @@ def main_menu(screen):
 
         mouse_pos = pygame.mouse.get_pos()
 
-        # Кнопки
         draw_button(screen, "1. Начать игру", button1_rect, GREEN, button1_rect.collidepoint(mouse_pos))
         draw_button(screen, "2. Для двух игроков", button2_rect, BLUE, button2_rect.collidepoint(mouse_pos))
         draw_button(screen, "3. Рейтинговая игра", button3_rect, PURPLE, button3_rect.collidepoint(mouse_pos))
@@ -141,19 +137,23 @@ def main_menu(screen):
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
+                    pygame.mixer.music.stop()
                     from game import run_game
                     run_game(screen)
                 elif event.key == pygame.K_2:
+                    pygame.mixer.music.stop()
                     from game import run_game
                     run_game(screen, multiplayer=True)
                 elif event.key == pygame.K_3:
-                    # Здесь будет вызов функции для рейтинговой игры
-                    print("Рейтинговая игра")
+                    pygame.mixer.music.stop()
+                    from rating import start_rating_game
+                    start_rating_game(screen)
                 elif event.key == pygame.K_4:
-                    # Здесь будет вызов функции для таблицы рейтинга
-                    print("Таблица рейтинга")
+                    pygame.mixer.music.stop()
+                    from toptable import show_highscores
+                    show_highscores(screen)
+                    pygame.mixer.music.play(-1)  # Возобновляем музыку после возврата
                 elif event.key == pygame.K_5:
-                    # Здесь будет вызов функции для настроек
                     print("Настройки")
                 elif event.key == pygame.K_6 or event.key == pygame.K_ESCAPE:
                     pygame.quit()
@@ -161,19 +161,23 @@ def main_menu(screen):
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if button1_rect.collidepoint(event.pos):
+                    pygame.mixer.music.stop()
                     from game import run_game
                     run_game(screen)
                 elif button2_rect.collidepoint(event.pos):
+                    pygame.mixer.music.stop()
                     from game import run_game
                     run_game(screen, multiplayer=True)
                 elif button3_rect.collidepoint(event.pos):
-                    # Здесь будет вызов функции для рейтинговой игры
-                    print("Рейтинговая игра")
+                    pygame.mixer.music.stop()
+                    from rating import start_rating_game
+                    start_rating_game(screen)
                 elif button4_rect.collidepoint(event.pos):
-                    # Здесь будет вызов функции для таблицы рейтинга
-                    print("Таблица рейтинга")
+                    pygame.mixer.music.stop()
+                    from toptable import show_highscores
+                    show_highscores(screen)
+                    pygame.mixer.music.play(-1)  # Возобновляем музыку после возврата
                 elif button5_rect.collidepoint(event.pos):
-                    # Здесь будет вызов функции для настроек
                     print("Настройки")
                 elif button6_rect.collidepoint(event.pos):
                     pygame.quit()
