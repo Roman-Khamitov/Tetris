@@ -428,11 +428,14 @@ def run_game(screen, multiplayer=False, mode="normal"):
         dt = clock.tick(60)
         screen.fill(BLACK)
         width, height = screen.get_size()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-                result = {"quit": True}
+                return {"quit": True}
+                
             elif event.type == pygame.KEYDOWN:
+                # Обработка управления для игрока 1
                 if not game1.game_over and not winner_declared:
                     if event.key == pygame.K_a:
                         game1.move(-1)
@@ -444,10 +447,8 @@ def run_game(screen, multiplayer=False, mode="normal"):
                         game1.rotate()
                     elif event.key == pygame.K_LSHIFT:
                         game1.drop()
-                    if event.key == pygame.K_ESCAPE:
-                        result = {"menu": True}  # Сигнал для возврата в меню
-                        running = False
-
+                
+                # Обработка управления для игрока 2 (в мультиплеере)
                 if multiplayer and game2 and not game2.game_over and not winner_declared:
                     if event.key == pygame.K_LEFT:
                         game2.move(-1)
@@ -459,10 +460,22 @@ def run_game(screen, multiplayer=False, mode="normal"):
                         game2.rotate()
                     elif event.key == pygame.K_SPACE:
                         game2.drop()
-
+                
+                # Общие клавиши
                 if event.key == pygame.K_ESCAPE:
-                    pygame.mixer.music.play(-1)
-                    running = False
+                    # В рейтинговом режиме возвращаем результат при ESC
+                    if mode == "rating" and (game1.game_over or (multiplayer and game2 and game2.game_over)):
+                        result = {
+                            "game_over": True,
+                            "score": game1.score if not multiplayer else max(game1.score, game2.score if game2 else 0),
+                            "level": game1.level if not multiplayer else max(game1.level, game2.level if game2 else 0),
+                            "lines": game1.lines_cleared_total if not multiplayer else max(game1.lines_cleared_total, game2.lines_cleared_total if game2 else 0)
+                        }
+                        return result
+                    else:
+                        return {"menu": True}
+                
+                # Обработка рестарта
                 if (game1.game_over or (multiplayer and game2 and game2.game_over)) and event.key == pygame.K_r:
                     game1.restart()
                     if multiplayer:
@@ -471,13 +484,25 @@ def run_game(screen, multiplayer=False, mode="normal"):
                     winner_alpha = 0
                     winner_font_size = 40
 
+        # Логика игры и отрисовка
         if not multiplayer:
             if not game1.game_over:
                 game1.update(dt)
             game1.draw_board(width, height, player_num=1)
             if game1.game_over:
                 game1.draw_game_over(dt, width, height)
+                
+                # Автоматический возврат результата только в рейтинговом режиме
+                if mode == "rating":
+                    result = {
+                        "game_over": True,
+                        "score": game1.score,
+                        "level": game1.level,
+                        "lines": game1.lines_cleared_total
+                    }
+                    return result
         else:
+            # Логика для мультиплеера (остается без изменений)
             half_width = width // 2
 
             surface1 = pygame.Surface((half_width, height))
@@ -538,16 +563,17 @@ def run_game(screen, multiplayer=False, mode="normal"):
                 hint_rect = hint.get_rect(center=(width // 2, height // 2 + 30))
                 screen.blit(hint, hint_rect)
 
+                # Автоматический возврат результата только в рейтинговом режиме
+                if mode == "rating":
+                    result = {
+                        "game_over": True,
+                        "score": max(game1.score, game2.score if game2 else 0),
+                        "level": max(game1.level, game2.level if game2 else 0),
+                        "lines": max(game1.lines_cleared_total, game2.lines_cleared_total if game2 else 0)
+                    }
+                    return result
+
         pygame.display.flip()
 
-        # Возвращаем результат для рейтингового режима
-        if not running or (not multiplayer and game1.game_over) or (multiplayer and game1.game_over and game2.game_over):
-            result = {
-                "game_over": True,
-                "score": game1.score if not multiplayer else max(game1.score, game2.score if game2 else 0),
-                "level": game1.level if not multiplayer else max(game1.level, game2.level if game2 else 0),
-                "lines": game1.lines_cleared_total if not multiplayer else max(game1.lines_cleared_total, game2.lines_cleared_total if game2 else 0)
-            }
-            print(f"Возвращаем результат: {result}")
-            return result
-
+    # Возвращаем результат только при явном выходе (не при рестарте)
+    return {"quit": True}
